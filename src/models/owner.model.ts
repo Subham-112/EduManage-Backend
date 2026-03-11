@@ -25,7 +25,7 @@ export interface IOwnerAvatar {
 
 export interface IOwner {
   name: string;
-  ownerPhone: string;
+  phone: string;
   email?: string;
   password: string;
   avatar?: IOwnerAvatar;
@@ -51,7 +51,7 @@ export const OwnerAvatarSchema = new Schema<IOwnerAvatar>({
 export const OwnerSchema = new Schema<IOwner>(
   {
     name: { type: String, required: true },
-    ownerPhone: { type: String, required: true },
+    phone: { type: String, required: true },
     email: { type: String },
     password: { type: String, required: true },
     avatar: { type: OwnerAvatarSchema },

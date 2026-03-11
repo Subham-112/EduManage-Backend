@@ -10,12 +10,19 @@ import { comparePasswords, hashPassword } from "../../utils/password.util";
 
 interface ICreateOwnerPayload {
   name: string;
-  ownerPhone: string;
+  phone: string;
   email?: string;
   password: string;
   tenant: string;
   branch: string;
   status: OwnerStatus;
+  file?: Express.Multer.File;
+}
+
+interface IUpdateOwnerPayload {
+  name: string;
+  phone: string;
+  email?: string;
   file?: Express.Multer.File;
 }
 
@@ -30,8 +37,8 @@ export const findOwnerLean = (query: any) => {
 export const OwnerService = {
   async createOwner(payload: ICreateOwnerPayload) {
     const isOwnerExist = await findOwnerLean(
-      payload.ownerPhone ? { 
-        ownerPhone: payload.ownerPhone
+      payload.phone ? { 
+        phone: payload.phone
       } : {
         email: payload.email
       });
@@ -45,7 +52,7 @@ export const OwnerService = {
     // Prepare owner data without avatar
     const ownerData: any = {
       name: payload.name,
-      ownerPhone: payload.ownerPhone,
+      phone: payload.phone,
       email: payload.email,
       password: hashedPass,
       tenant: payload.tenant,
@@ -59,7 +66,7 @@ export const OwnerService = {
     const tokenPayload = {
       user: {
         id: String(newOwner._id),
-        phone: newOwner.ownerPhone,
+        phone: newOwner.phone,
         role: UserRole.OWNER,
         tenantId: newOwner.tenant,
         branchId: newOwner.branch,
@@ -84,7 +91,7 @@ export const OwnerService = {
   },
 
   async loginOwner(phone: string, password: string) {
-    const owner = await findOwnerLean({ownerPhone: phone});
+    const owner = await findOwnerLean({phone: phone});
     console.log(owner);
     if (!owner) {
       throw new ApiError(404, "Owner not found");
@@ -98,7 +105,7 @@ export const OwnerService = {
     const tokenPayload = {
       user: {
         id: String(owner._id),
-        phone: owner.ownerPhone,
+        phone: owner.phone,
         role: UserRole.OWNER,
         tenantId: owner.tenant,
         branchId: owner.branch,
@@ -113,7 +120,7 @@ export const OwnerService = {
   },
 
   async changePassword(phone: string, oldPassword: string, newPassword: string) {
-    const owner = await findOwner({ownerPhone: phone});
+    const owner = await findOwner({phone: phone});
     console.log(owner);
     if (!owner) {
       throw new ApiError(404, "Owner not found");
@@ -145,7 +152,7 @@ export const OwnerService = {
   },
 
   async getOwnerById(ownerId: string) {
-    const owner = Owner.findById(ownerId)
+    const owner = await Owner.findById(ownerId)
       .populate("tenant", "_id name tenantPhone status")
       .populate("branch")
       .lean();
@@ -167,6 +174,44 @@ export const OwnerService = {
     }
 
     return new ApiResponse(201, owners, "Active Owners fetch successfully");
+  },
+
+  async updateOwner(ownerId: string, payload: IUpdateOwnerPayload) {
+    const owner = await Owner.findById(ownerId).select("_id").lean();
+    if (!owner) {
+      throw new ApiError(404, "Owner not found");
+    }
+
+    // Update other fields
+    owner.name = payload.name;
+    owner.phone = payload.phone;
+    owner.email = payload.email;
+    
+    const updatedOwner = await Owner.findByIdAndUpdate(
+      ownerId,
+      {$set: {
+        name: payload.name,
+        phone: payload.phone,
+        email: payload.email
+      }}, { new: true }
+    )
+    
+    // Start async avatar upload operation without awaiting
+    if (payload.file) {
+      logger.info(`Starting avatar upload for owner: ${ownerId}`);
+      handleAvatarUpload(
+        ownerId,
+        payload.file,
+        `tenant_${ownerId}/owner/avatar`,
+      );
+    }
+
+    return new ApiResponse(200, updatedOwner, "Owner updated successfully");
+  },
+
+  async deleteOwner(ownerId: string) {
+    const owner = await Owner.findByIdAndDelete(ownerId);
+    return new ApiResponse(200, owner, "Owner account deleted successfully")
   }
 };
 

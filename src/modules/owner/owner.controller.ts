@@ -31,7 +31,7 @@ export const createOwner = asyncHandler(async (req: Request, res: Response) => {
 
   const response = await OwnerService.createOwner({
     name,
-    ownerPhone: phone,
+    phone: phone,
     email: req.body.email || "",
     password,
     tenant,
@@ -123,3 +123,32 @@ export const getActiveOwners = asyncHandler(
     return res.status(response.statusCode).json(response);
   },
 );
+
+export const updateOwner = asyncHandler(
+  async (req: Request, res: Response) => {
+    if (!req.params.ownerId || !mongoose.Types.ObjectId.isValid(String(req.params.ownerId))) {
+      throw new ApiError(400, "Owner id is required or Invalid Owner Id");
+    }
+
+    const payload = {
+      name: req.body.name,
+      phone: req.body.phone,
+      email: req.body.email,
+      file: req.file
+    }
+
+    const response = await OwnerService.updateOwner(String(req.params.ownerId), payload);
+    return res.status(response.statusCode).json(response);
+  }
+);
+
+export const deleteOwner = asyncHandler(
+  async (req: Request, res: Response) => {
+    if (!req.params.ownerId || !mongoose.Types.ObjectId.isValid(String(req.params.ownerId))) {
+      throw new ApiError(400, "Owner id is required or Invalid Owner Id");
+    }
+
+    const response = await OwnerService.deleteOwner(String(req.params.ownerId));
+    return res.status(response.statusCode).json(response);
+  }
+)
