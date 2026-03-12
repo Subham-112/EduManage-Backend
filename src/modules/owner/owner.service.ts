@@ -4,7 +4,7 @@ import Owner from "../../models/owner.model";
 import ApiError from "../../utils/ApiError";
 import ApiResponse from "../../utils/ApiResponse";
 import { generateAccessToken } from "../../utils/token";
-import { uploadToCloudinary } from "../../helpers/cloudinery.helper";
+import { handleAvatarUpload } from "../../utils/handleAvatarUpload";
 import { logger } from "../../utils/logger.util";
 import { comparePasswords, hashPassword } from "../../utils/password.util";
 
@@ -84,6 +84,8 @@ export const OwnerService = {
         newOwner._id.toString(),
         payload.file,
         `tenant_${payload.tenant}/owner/avatar`,
+        "owner",
+        "avatar"
       );
     }
 
@@ -203,6 +205,8 @@ export const OwnerService = {
         ownerId,
         payload.file,
         `tenant_${ownerId}/owner/avatar`,
+        "owner",
+        "avatar"
       );
     }
 
@@ -215,33 +219,3 @@ export const OwnerService = {
   }
 };
 
-// Background function to handle avatar upload and update owner document
-async function handleAvatarUpload(
-  ownerId: string,
-  file: Express.Multer.File,
-  folderPath: string,
-) {
-  try {
-    const uploadResults = await uploadToCloudinary([file], folderPath);
-
-    if (uploadResults.length > 0) {
-      const uploadResult = uploadResults[0];
-
-      const avatarData = {
-        url: uploadResult.url,
-        key: uploadResult.public_id,
-        name: file.originalname,
-        size: file.size,
-        mimetype: file.mimetype,
-      };
-
-      // Update owner document with avatar data
-      await Owner.findByIdAndUpdate(ownerId, { avatar: avatarData });
-
-      logger.info(`Avatar uploaded successfully for owner: ${ownerId}`);
-    }
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    logger.error(`Avatar upload failed for owner ${ownerId}: ${errorMessage}`);
-  }
-}
