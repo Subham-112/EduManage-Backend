@@ -1,4 +1,4 @@
-export enum StudentStaus {
+export enum StudentStatus {
     ACTIVE = "active",
     INACTIVE = "inactive",
     SUSPENDED = "suspended",
