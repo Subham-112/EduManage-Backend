@@ -54,7 +54,6 @@ export const authenticate = (
     }
 
     const decoded = verifyAccessToken(token) as JwtPayload;
-    console.log("Decoded data", decoded);
 
     // Attach user info to request
     (req as AuthenticatedRequest).user = {
@@ -108,7 +107,6 @@ export const authenticate = (
 export const authorize = (allowedRoles: UserRole | UserRole[]) => {
   return (req: Request, res: Response, next: NextFunction): void => {
     const user = (req as AuthenticatedRequest).user;
-    console.log("Role", user?.role);
     try {
       // Check if user is authenticated
       if (!user) {

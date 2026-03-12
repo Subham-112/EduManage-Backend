@@ -1,6 +1,6 @@
 import { uploadToCloudinary } from "../helpers/cloudinery.helper";
 import Owner from "../models/owner.model";
-import Student from "../modules/student/student.model";
+import Student from "../models/student.model";
 import { logger } from "./logger.util";
 import { Model } from "mongoose";
 
