@@ -5,16 +5,20 @@ import { changePassword, createTenant, deleteTenant, getTenant, getTenantStats, 
 const tenantRouter = Router();
 
 const ownerAccess = [authenticate, authorize([UserRole.OWNER, UserRole.ADMIN])];
+const anyAuth = [
+    authenticate,
+    authorize([UserRole.STUDENT, UserRole.TEACHER, UserRole.ADMIN, UserRole.OWNER]),
+];
 
-tenantRouter.post("/create", createTenant);
+tenantRouter.post("/create", ...ownerAccess, createTenant);
 tenantRouter.post(
     "/:id/change-password",
     ...ownerAccess,
     changePassword
 );
 
-tenantRouter.get("/", listTenants);
-tenantRouter.get("/:id", getTenant);
+tenantRouter.get("/", ...anyAuth, listTenants);
+tenantRouter.get("/:id", ...anyAuth, getTenant);
 tenantRouter.get(
     "/:id/stats",
     ...ownerAccess,

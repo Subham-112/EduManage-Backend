@@ -1,14 +1,18 @@
 import Tenant, { ITenant } from "../../models/tenant.model";
+import mongoose from "mongoose";
 import Branch from "../../models/branch.model";
 import ApiError from "../../utils/ApiError";
 import ApiResponse from "../../utils/ApiResponse";
 import { hashPassword, comparePasswords } from "../../utils/password.util";
 import { TenantStatus, BranchStatus } from "../../config/enums";
+import { findOwner } from "../owner/owner.service";
+import { UserRole } from "../../middlewares/auth.middleware";
 
 export const TenantService = {
   async createTenant(payload: {
+    ownerId: string;
     name: string;
-    tenantPhone: string;
+    phone: string;
     email?: string;
     password: string;
     image?: {
@@ -21,6 +25,10 @@ export const TenantService = {
     };
     numberOfStudents?: number;
     numberOfTeachers?: number;
+    createdByUser?: {
+      id: string;
+      role: string;
+    };
     branchDetails?: {
       branchName: string;
       phone?: string;
@@ -39,9 +47,14 @@ export const TenantService = {
       numberOfTeachers?: number;
     };
   }) {
+    const owner = await findOwner({ _id: payload.ownerId });
+    if (!owner) {
+      throw new ApiError(404, "Owner not found")
+    };
+
     const existingTenant = await Tenant.findOne({
       $or: [
-        { tenantPhone: payload.tenantPhone },
+        { phone: payload.phone },
         ...(payload.email ? [{ email: payload.email }] : []),
       ],
     }).lean();
@@ -55,24 +68,26 @@ export const TenantService = {
       );
     }
 
-    // Hash the password
-    const hashedPassword = await hashPassword(payload.password);
-
     // Create new tenant with branch IDs
-    const savedTenant = await Tenant.create({
+    const tenantData: Partial<ITenant> = {
       name: payload.name,
-      tenantPhone: payload.tenantPhone,
+      phone: payload.phone,
       email: payload.email,
-      password: hashedPassword,
-      image: payload.image,
+      images: payload.image ? [payload.image] : [],
       branches: [],
       numberOfStudents: payload.numberOfStudents || 0,
       numberOfTeachers: payload.numberOfTeachers || 0,
       status: TenantStatus.REVIEW,
-    });
+      owner: payload.ownerId as unknown as mongoose.Schema.Types.ObjectId,
+      createdByUser: {
+        id: payload.createdByUser?.id as unknown as mongoose.Schema.Types.ObjectId,
+        role: payload.createdByUser?.role || UserRole.OWNER,
+      },
+    };
+    const savedTenant = await Tenant.create(tenantData);
 
     // Create branch if branch details are provided
-    let branchIds: any[] = [];
+    let branchIds: mongoose.Schema.Types.ObjectId[] = [];
     if (payload.branchDetails) {
       // Prepare geoLocation if provided
       let geoLocation = undefined;
@@ -90,7 +105,7 @@ export const TenantService = {
         };
       }
 
-      const savedBranch = await Branch.create({
+      const branchData = {
         branchName: payload.branchDetails.branchName,
         phone: payload.branchDetails.phone,
         email: payload.branchDetails.email,
@@ -104,25 +119,26 @@ export const TenantService = {
         numberOfStudents: payload.branchDetails.numberOfStudents || 0,
         numberOfTeachers: payload.branchDetails.numberOfTeachers || 0,
         status: BranchStatus.ACTIVE,
-      });
-
-      branchIds.push(savedBranch._id);
+        tenant: savedTenant._id as unknown as mongoose.Schema.Types.ObjectId,
+      };
+      const savedBranch = await Branch.create(branchData);
+      branchIds.push(savedBranch._id as unknown as mongoose.Schema.Types.ObjectId);
     }
 
-    // Update branch with tenant ID
+    // Update tenant with branch IDs
     if (branchIds.length > 0) {
-      await Branch.updateMany(
-        { _id: { $in: branchIds } },
-        { $set: { tenant: savedTenant._id } },
-      );
-      // Update tenant with branch IDs
       savedTenant.branches = branchIds;
       await savedTenant.save();
     }
 
+    // Update owner's tenants array
+    if (owner && Array.isArray(owner.tenants)) {
+      owner.tenants.push(savedTenant._id as unknown as mongoose.Schema.Types.ObjectId);
+      await owner.save();
+    }
+
     // Return tenant without password, with populated branches
     const populatedTenant = await Tenant.findById(savedTenant._id)
-      .select("-password")
       .populate(
         "branches",
         "branchName city state status numberOfStudents numberOfTeachers",
@@ -139,7 +155,6 @@ export const TenantService = {
   async getTenant(tenantId: string) {
     try {
       const tenant = await Tenant.findById(tenantId)
-        .select("-password")
         .populate(
           "branches",
           "branchName city state status numberOfStudents numberOfTeachers",
@@ -186,7 +201,7 @@ export const TenantService = {
     if (payload.search) {
       filter.$or = [
         { name: { $regex: payload.search, $options: "i" } },
-        { tenantPhone: { $regex: payload.search, $options: "i" } },
+        { phone: { $regex: payload.search, $options: "i" } },
         { email: { $regex: payload.search, $options: "i" } },
       ];
     }
@@ -227,15 +242,15 @@ export const TenantService = {
     payload: {
       name?: string;
       email?: string;
-      tenantPhone?: string;
+      phone?: string;
     },
   ) {
-    if (payload.email || payload.tenantPhone) {
+    if (payload.email || payload.phone) {
       const existingTenant = await Tenant.findOne({
         _id: { $ne: tenantId },
         $or: [
-          ...(payload.tenantPhone
-            ? [{ tenantPhone: payload.tenantPhone }]
+          ...(payload.phone
+            ? [{ phone: payload.phone }]
             : []),
           ...(payload.email ? [{ email: payload.email }] : []),
         ],
@@ -252,7 +267,7 @@ export const TenantService = {
       tenantId,
       { $set: payload },
       { new: true, runValidators: true },
-    ).select("-password");
+    );
 
     if (!updatedTenant) {
       throw new ApiError(404, "Tenant not found", null, [
@@ -280,19 +295,7 @@ export const TenantService = {
         throw new ApiError(404, "Tenant not found", null, [
           "Tenant with provided ID does not exist",
         ]);
-      }
-
-      // Verify old password
-      const isPasswordMatch = await comparePasswords(
-        payload.oldPassword,
-        tenant.password,
-      );
-
-      if (!isPasswordMatch) {
-        throw new ApiError(401, "Invalid current password", null, [
-          "Current password does not match",
-        ]);
-      }
+      };
 
       // Hash new password
       const hashedNewPassword = await hashPassword(payload.newPassword);
@@ -318,7 +321,11 @@ export const TenantService = {
   },
 
   async deleteTenant(tenantId: string) {
-    const deletedTenant = await Tenant.findByIdAndDelete(tenantId);
+    const deletedTenant = await Tenant.findByIdAndUpdate(
+      tenantId,
+      { status: TenantStatus.DELETED },
+      { new: true }
+    );
 
     if (!deletedTenant) {
       throw new ApiError(404, "Tenant not found", null, [

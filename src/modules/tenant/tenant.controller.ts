@@ -2,10 +2,15 @@ import { Request, Response } from "express";
 import { asyncHandler } from "../../utils/asyncHandler";
 import ApiError from "../../utils/ApiError";
 import { TenantService } from "./tenant.service";
+import mongoose, { mongo } from "mongoose";
+import { getAuthUser } from "../../utils/getAuthUser";
+import { UserRole } from "../../middlewares/auth.middleware";
 
 export const createTenant = asyncHandler(
   async (req: Request, res: Response) => {
+    const authUser = getAuthUser(req, [UserRole.OWNER, UserRole.ADMIN]);
     const {
+      ownerId,
       name,
       phone,
       email,
@@ -15,6 +20,10 @@ export const createTenant = asyncHandler(
       numberOfStudents,
       numberOfTeachers,
     } = req.body;
+
+    if (!authUser.id || !mongoose.Types.ObjectId.isValid(authUser.id)) {
+      throw new ApiError(400, "Owner ID is required or Invalid Owner ID");
+    }
 
     if (!name || typeof name !== "string") {
       throw new ApiError(400, `Invalid name (${name})`);
@@ -116,14 +125,19 @@ export const createTenant = asyncHandler(
     }
 
     const response = await TenantService.createTenant({
+      ownerId: authUser.role === UserRole.OWNER ? authUser.id : ownerId,
       name,
-      tenantPhone: phone,
+      phone,
       email,
       password,
       image,
       branchDetails,
       numberOfStudents,
       numberOfTeachers,
+      createdByUser: {
+        id: authUser.id,
+        role: authUser.role,
+      }
     });
 
     return res.status(response.statusCode).json(response);
