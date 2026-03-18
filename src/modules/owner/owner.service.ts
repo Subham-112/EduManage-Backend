@@ -13,8 +13,6 @@ interface ICreateOwnerPayload {
   phone: string;
   email?: string;
   password: string;
-  tenant: string;
-  branch: string;
   status: OwnerStatus;
   file?: Express.Multer.File;
 }
@@ -55,9 +53,8 @@ export const OwnerService = {
       phone: payload.phone,
       email: payload.email,
       password: hashedPass,
-      tenant: payload.tenant,
-      branch: payload.branch,
       status: OwnerStatus.ACTIVE,
+      tenants: [], // initialize empty tenants array
     };
 
     // Create owner in database without avatar
@@ -68,14 +65,14 @@ export const OwnerService = {
         id: String(newOwner._id),
         phone: newOwner.phone,
         role: UserRole.OWNER,
-        tenantId: newOwner.tenant,
-        branchId: newOwner.branch,
+        tenantIds: newOwner.tenants,
       },
     };
 
     const AccessToken = await generateAccessToken(tokenPayload);
 
-    const result = { accessToken: AccessToken, ...newOwner.toObject() };
+      const { password, ...ownerObj } = newOwner.toObject();
+      const result = { accessToken: AccessToken, ...ownerObj };
 
     // Start async avatar upload operation without awaiting
     if (payload.file) {
@@ -83,7 +80,7 @@ export const OwnerService = {
       handleAvatarUpload(
         newOwner._id.toString(),
         payload.file,
-        `tenant_${payload.tenant}/owner/avatar`,
+        `owner/avatar`,
         "owner",
         "avatar"
       );
@@ -92,8 +89,10 @@ export const OwnerService = {
     return new ApiResponse(200, result, "Owner created successfully");
   },
 
-  async loginOwner(phone: string, password: string) {
-    const owner = await findOwnerLean({phone: phone});
+  async loginOwner(email: string, phone: string, password: string) {
+    const owner = await findOwnerLean(
+      phone ? { phone: phone } : { email: email }
+    );
     console.log(owner);
     if (!owner) {
       throw new ApiError(404, "Owner not found");
@@ -109,8 +108,7 @@ export const OwnerService = {
         id: String(owner._id),
         phone: owner.phone,
         role: UserRole.OWNER,
-        tenantId: owner.tenant,
-        branchId: owner.branch,
+        tenantIds: owner.tenants,
       },
     };
 
@@ -143,8 +141,7 @@ export const OwnerService = {
 
   async getAllOwners() {
     const owners = await Owner.find()
-      .populate("tenant", "_id name tenantPhone status")
-      .populate("branch")
+      .populate("tenants", "_id name tenantPhone status")
       .lean();
     if (!owners || owners.length === 0) {
       throw new ApiError(404, "Owners not found")
@@ -155,8 +152,7 @@ export const OwnerService = {
 
   async getOwnerById(ownerId: string) {
     const owner = await Owner.findById(ownerId)
-      .populate("tenant", "_id name tenantPhone status")
-      .populate("branch")
+      .populate("tenants", "_id name tenantPhone status")
       .lean();
   
     if (!owner) {
@@ -168,8 +164,7 @@ export const OwnerService = {
 
   async getActiveOwners() {
     const owners = await Owner.find({ status: OwnerStatus.ACTIVE })
-      .populate("tenant", "_id name tenantPhone status")
-      .populate("branch")
+      .populate("tenants", "_id name tenantPhone status")
       .lean();
     if (!owners || owners.length === 0) {
       throw new ApiError(404, "Owners not found")

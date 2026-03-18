@@ -6,10 +6,13 @@ import { OwnerService } from "./owner.service";
 import { OwnerStatus } from "../../config/enums";
 
 export const createOwner = asyncHandler(async (req: Request, res: Response) => {
-  const { name, phone, password, tenant, branch } = req.body;
+  const { name, phone, email, password } = req.body;
 
   if (!name || typeof name !== "string") {
     throw new ApiError(400, "Invalid name");
+  }
+  if (email && typeof email !== "string" || !/^\S+@\S+\.\S+$/.test(email)) {
+    throw new ApiError(400, "Invalid email");
   }
   if (!phone || typeof phone !== "string") {
     throw new ApiError(400, "Invalid phone");
@@ -22,20 +25,12 @@ export const createOwner = asyncHandler(async (req: Request, res: Response) => {
       "Invalid password or password must be at least 6 characters",
     );
   }
-  if (!tenant || !mongoose.Types.ObjectId.isValid(tenant)) {
-    throw new ApiError(400, "Invalid tenant or tenant must be an ObjectId");
-  }
-  if (!branch || !mongoose.Types.ObjectId.isValid(branch)) {
-    throw new ApiError(400, "Invalid branch or branch must be an ObjectId");
-  }
 
   const response = await OwnerService.createOwner({
     name,
     phone: phone,
-    email: req.body.email || "",
+    email: email || "",
     password,
-    tenant,
-    branch,
     status: OwnerStatus.ACTIVE,
     file: req.file,
   });
@@ -45,12 +40,16 @@ export const createOwner = asyncHandler(async (req: Request, res: Response) => {
 
 export const loginOwner = asyncHandler(
   async (req: Request, res: Response) => {
-    const { phone, password } = req.body;
+    const { email, phone, password } = req.body;
 
-    if (!phone || typeof phone !== "string") {
+    if (!email || typeof email !== "string" || !/^\S+@\S+\.\S+$/.test(email)) {
+      throw new ApiError(400, "Invalid email");
+    }
+
+    if (phone && typeof phone !== "string") {
       throw new ApiError(400, "Invalid phone");
     }
-    if (!/^\d{10}$/.test(phone)) {
+    if (phone && !/^\d{10}$/.test(phone)) {
       throw new ApiError(400, "Phone number must be 10 digits");
     }
     if (!password || password.trim().length < 6) {
@@ -60,7 +59,7 @@ export const loginOwner = asyncHandler(
       );
     }
 
-    const response = await OwnerService.loginOwner(phone, password);
+    const response = await OwnerService.loginOwner(email, phone, password);
 
     return res.status(response.statusCode).json(response);
   },
