@@ -9,7 +9,7 @@ export async function handleAvatarUpload(
   docId: string,
   file: Express.Multer.File,
   folderPath: string,
-  modelType: "owner" | "student",
+  modelType: "owner" | "student" | "teacher",
   field: string = "avatar"
 ) {
   try {
@@ -28,6 +28,9 @@ export async function handleAvatarUpload(
         model = Owner as Model<any>;
       } else if (modelType === "student") {
         model = Student as Model<any>;
+      } else if (modelType === "teacher") {
+        const Teacher = require("../models/teacher.model").default;
+        model = Teacher as Model<any>;
       } else {
         throw new Error("Invalid model type for avatar upload");
       }

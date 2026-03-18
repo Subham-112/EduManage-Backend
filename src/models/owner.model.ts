@@ -30,8 +30,7 @@ export interface IOwner {
   password: string;
   avatar?: IOwnerAvatar;
 
-  tenant: string; // Reference to Tenant
-  branch: string; // Reference to Branch
+  tenants: Schema.Types.ObjectId[]; // References to Tenants
 
   status: OwnerStatus;
 
@@ -56,8 +55,7 @@ export const OwnerSchema = new Schema<IOwner>(
     password: { type: String, required: true },
     avatar: { type: OwnerAvatarSchema },
 
-    tenant: { type: String, required: true, ref: "Tenant" },
-    branch: { type: String, required: true, ref: "Branch" },
+    tenants: [{ type: Schema.Types.ObjectId, ref: "Tenant" }],
 
     status: {
       type: String,

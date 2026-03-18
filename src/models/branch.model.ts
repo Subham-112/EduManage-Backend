@@ -2,7 +2,7 @@ import mongoose, { Schema } from "mongoose";
 import { BranchStatus } from "../config/enums";
 
 export interface IBranch {
-    tenant: Schema.Types.ObjectId; // Reference to Tenant (ObjectId)
+    tenant: Schema.Types.ObjectId; // Reference to Tenant
     branchName: string;
     phone?: string;
     email?: string;
@@ -24,7 +24,7 @@ export interface IBranch {
 }
 
 export const BranchSchema = new Schema<IBranch>({
-    tenant: { type: Schema.Types.ObjectId, ref: "Tenant" },
+    tenant: { type: Schema.Types.ObjectId, ref: "Tenant", required: true },
     branchName: { type: String, required: true },
     phone: { type: String },
     email: { type: String },

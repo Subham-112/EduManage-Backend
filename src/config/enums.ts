@@ -10,6 +10,7 @@ export enum TenantStatus {
     ACTIVE = "active",
     INACTIVE = "inactive",
     SUSPENDED = "suspended",
+    DELETED = "deleted",
 }
 
 export enum OwnerStatus {
@@ -30,4 +31,11 @@ export enum BranchStatus {
     ACTIVE = "active",
     INACTIVE = "inactive",
     SUSPENDED = "suspended",
+}
+
+export enum SubscriptionPlan {
+    FREE = "free",
+    BASIC = "basic",
+    PRO = "pro",
+    ENTERPRISE = "enterprise",
 }
