@@ -93,7 +93,6 @@ export const OwnerService = {
     const owner = await findOwnerLean(
       phone ? { phone: phone } : { email: email }
     );
-    console.log(owner);
     if (!owner) {
       throw new ApiError(404, "Owner not found");
     }
