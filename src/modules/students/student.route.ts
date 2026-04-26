@@ -10,6 +10,6 @@ const userAccess = authenticateRole("student" as Role);
 router.post('/create', createStudent);
 router.post("/login", loginStudent);
 
-router.get("/logout", authenticateToken, userAccess, logoutStudent);
+router.post("/logout", authenticateToken, userAccess, logoutStudent);
 
 export default router;
