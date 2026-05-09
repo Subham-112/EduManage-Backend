@@ -3,12 +3,15 @@ import cors from "cors";
 import allRoutes from "./routes/index";
 import { config } from "./config/config";
 import { connectDB } from "./config/database";
+import { globalErrorHandler } from "./middleware/globalErrorHandler";
+import { requestLogging } from "./middleware/requestLogging";
 
 const app = Express();
 
 app.use(cors());
 app.use(Express.json());
 
+app.use(requestLogging);
 app.use("/api", allRoutes);
 
 const startServer = async () => {
@@ -27,3 +30,5 @@ const startServer = async () => {
 };
 
 startServer();
+
+app.use(globalErrorHandler);
