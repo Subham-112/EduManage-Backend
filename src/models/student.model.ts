@@ -20,6 +20,7 @@ interface IStudent {
   password: string;
   photo?: IPhoto;
   parents: IParent[];
+  agreedToTerms?: boolean;
   refreshToken?: string;
   createdAt?: Date;
   updatedAt?: Date;
@@ -45,6 +46,7 @@ const studentSchema = new Schema<IStudent>({
   password: { type: String, required: true },
   photo: [{ type: photoSchema, default: null }],
   parents: [{ type: parentSchema, default: [] }],
+  agreedToTerms: { type: Boolean, default: false },
   refreshToken: { type: String, default: null },
   createdAt: { type: Date },
   updatedAt: { type: Date },
