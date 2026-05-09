@@ -1,8 +1,16 @@
+import path from "path";
+import dotenv from "dotenv";
+
+dotenv.config({
+  path: path.resolve(__dirname, "../../.env"),
+})
+
 export const config = {
-  mode: process.env.NODE_ENV || "development",
+  mode: process.env.NODE_ENV || "prod",
   port: process.env.PORT || 3000,
 
   db: {
+    dbName: process.env.DB_NAME || "EduManage",
     url: process.env.MONGO_URL,
   },
 

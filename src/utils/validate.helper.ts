@@ -9,7 +9,18 @@ export const validateEmail = (email: string): boolean => {
 };
 
 export const validatePassword = (password: string): boolean => {
-    // Password must be at least 6 characters long and contain at least one number and one capital letter and one symbol
-    const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{6,}$/;
+    // Password must be at least 6 characters long and contain at least one number,
+    // one capital letter, and at least one non-alphanumeric symbol (allows + and others)
+    const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{6,}$/;
     return passwordRegex.test(password);
+};
+
+export const isMobileOrEmail = (identifier: string): "phone" | "email" | null => {
+    if (validatePhone(identifier)) {
+        return "phone";
+    } else if (validateEmail(identifier)) {
+        return "email";
+    } else {
+        return null;
+    }
 };
