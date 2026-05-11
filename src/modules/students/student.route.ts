@@ -7,7 +7,7 @@ const router = Router();
 const userAccess = authenticateRole("student" as Role);
 
 // Public routes
-router.post('/create', createStudent);
+router.post('/', createStudent);
 router.post("/login", loginStudent);
 
 router.post("/logout", authenticateToken, userAccess, logoutStudent);

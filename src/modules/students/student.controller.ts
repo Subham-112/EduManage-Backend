@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import mongoose from "mongoose";
 import { studentService } from "./student.service";
-import { isMobileOrEmail, validateEmail, validatePassword, validatePhone } from "../../utils/validate.helper";
+import { isPhoneOrEmail, validateEmail, validatePassword, validatePhone } from "../../utils/validate.helper";
 import { getAuthUser } from "../../utils/authUser";
 import ApiError from "../../utils/ApiError";
 
@@ -48,11 +48,11 @@ export const loginStudent = async (req: Request, res: Response) => {
 
     let phone: string | null = null;
     let email: string | null = null;
-    const isPhoneOrEmail = isMobileOrEmail(identifier);
+    const phoneOrEmail = isPhoneOrEmail(identifier);
 
-    if (isPhoneOrEmail === "phone") {
+    if (phoneOrEmail === "phone") {
         phone = identifier;
-    } else if (isPhoneOrEmail === "email") {
+    } else if (phoneOrEmail === "email") {
         email = identifier;
     }
 
@@ -62,16 +62,9 @@ export const loginStudent = async (req: Request, res: Response) => {
     }
 
     // Validate whichever identifier was provided
-    if (phone && !validatePhone(phone)) {
-      throw new ApiError(400, "Invalid phone number format");
-    }
-    if (email && !validateEmail(email)) {
-      throw new ApiError(400, "Invalid email format");
-    }
-
-    if (!validatePassword(password)) {
-        throw new ApiError(400, "Invalid password format. Password must be at least 6 characters long and contain at least one number and one capital letter and one symbol");
-    }
+    phone && validatePhone(phone, false);
+    email && validateEmail(email, false);
+    validatePassword(password);
 
     const response = await studentService.loginStudent({ phone: phone ?? undefined, email: email ?? undefined, password }, res);
     return res.status(response.statusCode).json(response);
